@@ -1,6 +1,6 @@
-= Triton server architecture
+# Triton server architecture
 
-== Terminology
+## Terminology
 
 Mission — Indepent and sufficient set of data that contains configuraion, logs,
 plans and Plugin settings for set of Vehicles that collected data on
@@ -14,9 +14,9 @@ Agent — Counterpart of Plugins that runs on Backend and implements certain API
 for Plugins.
 
 
-== Common ideas
+## Common ideas
 
-=== IMC
+### IMC
 
 Every incoming or loaded IMC message is stored in a table `imc_raw` table with
 proper EntityID, VehicleID, Remote timestamp and local timestamps.
@@ -32,9 +32,9 @@ Every type of IMC message should be able to represent as an Object in local
 language (usually provided along with libimc).
 
 
-=== DBA (Database abstraction layer)
+### DBA (Database abstraction layer)
 
-==== Raw data queries
+#### Raw data queries
 
 DBA allows queries against collected IMC messages within specified:
 * the vehicle(s)
@@ -49,7 +49,7 @@ heavy port-processing which can slow-down the TimeLine functionality.
 *NB! Premature optimization warning*
 
 
-==== Specific data queries
+#### Specific data queries
 
 Some kind of data might be indexed by the database. For example, geospatial
 data (GPS-fixes) can be indexed with R-Tree index to speed-up a lookop.
@@ -63,7 +63,7 @@ message types and it makes sense to make a specific interface for every type.
 It will help to avoid implementing similar logic on every agent.
 
 
-==== General state
+#### General state
 
 Information, such that Vehicle discovery, its description, its status might be
 out of scope of IMC bus. But this information needs to be kept persistent.
@@ -77,7 +77,7 @@ The list of interface needs to be for:
 * ...
 
 
-=== Plugin-Agent communication
+### Plugin-Agent communication
 
 All practical logic in Triton is implemented by Plugins and Agents.  Triton
 core provides a general interface to Agents, such that:
@@ -184,7 +184,7 @@ Request:
 Some commands doesn't require Response.
 
 
-=== Plugin instantination process
+### Plugin instantination process
 
 Right after instantination the Plugin has almost no information. It is possible
 that Plugin knows the Vehicle it works with.
