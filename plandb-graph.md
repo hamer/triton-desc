@@ -10,7 +10,7 @@ of scope of this document.
 Core block of Plan transfering is
 
 ```
-PlansContainer = {
+PlanContainer = {
     "plans": [ PlanView, ... ],
     "transition": [ TransitionView, ... ],
     "maneuver": [ ManeuverView, ... ]
@@ -54,7 +54,7 @@ ManeuverView = {                // Single Maneuver overview
 ### Get
 
 To retrieve all plans a "get" request is used. There are no arguments are
-required. Response is just a PlansContainer.
+required. Response is just a PlanContainer.
 
 
 ### Plan modification
@@ -65,51 +65,68 @@ PlanContainer can contain a set of plan components to modify:
 
 ```
 PatchPlanContainer = {
+    "cookie": string,             // Unique Request-Issuer Identifier
     "patch": PlanContainer,       // Things to modify
-    "delete": PlanContainer       // Things to delete
+    "delete": PlanIdContainer     // Things to delete
+}
+```
+
+where
+
+```
+PlanContainer = {
+    "plans": [ int, ... ],
+    "transition": [ int, ... ],
+    "maneuver": [ int, ... ]
 }
 ```
 
 This container can be sent in a "patch" request. Reply should be either NULL if
 request is accepted or error (which is already controlled on a lower-level).
 
-After applying the patch successfully -- all subscribers needs to be notified by
-"plan" event;
+### Entries creation
 
-In case if new entries of PlanView, TransitionView or ManeuverView are needed --
-they need to be requested from a server.
+Previous section describes the process to modify or delete existing entries in
+PlanContainer, but doesn not the process of creation of Entries.
+
+Single "patch" call should commit valid plan at once, so new entries need to be
+created during that commintment. On the other hand they needto be referenced
+other entries: e.g. newly createdmaneuver needs to be referenced by some
+transition, or some plan might reference it as initial maneuver.
+
+In order to achieve that a special values ID needs to be used. To understand
+which values can be used for this purpose the propertied of IDs that can be
+assigned by the database needs to be used:
+
+Database assigns values, that are monotonically increasing and begins from 1.
+The value 1 is reserved as special value.
+
+Before uploading to backend, frontend may use negative ID's to address parts of
+plans. This allows to establish connections between them and it clearly
+indicates which parts are new.
+
+The logic on backend should replace negative ID's with fresly created ones and
+notify clients with real, existing ID's.
+
+Original client, who has issued such change will receive an update from backend
+and could remove own, locally created parts.
 
 
-#### New entries
+#### Multiple clients editing
 
-In case if new Plan, Transition or Maneuver is needed a special request is
-issued to a server: "create"
+It might happen, that two clients, whouse the same mission might edit plans
+simultaniously, and thus they both periodically receives updates with update
+events.
 
-```
-CreatePlanContainer = {
-    "plans": int,               // Number of empty PlanView's to create
-    "transitions": int,         // Number of empty TransitionView's to create
-    "maneuvers": int            // Number of empty ManeuverView's to create
-}
-```
+This mean that local plan parts can't be blindly deleted when update event
+arrives. It should react so to own changes only. There is no way to identify
+the source. Therefore, at the moment, the PatchPlanContainer should have a
+cookie, that is unique per client. Good candidate for this parameter is
+SessionID of the client -- it is unique for every client.
 
-A response to this request contains PlanContainer with freshly created entries
-only. Other clients are NOT notified with these while processing that request.
-
-NB! It might happen that other client will issue a "get" request and retrieve
-these fresh non-assigned entries -- there is nothing bad in that thing.
-
-NB! In case if client for some reason will fail to complete his operations --
-newly created entries will be left unused forever. Some mechanism of cleanup or
-reuse them might be useful.
 
 
 ## Notifications
 
 When Plan is being changed -- all clients should be notified with "plan" event.
 It should send PatchPlanContainer which describes plan modification.
-
-Practically that PatchPlanContainer might be the copy of the argument for "patch"
-request if all database operations were completed successfully.
-
-
